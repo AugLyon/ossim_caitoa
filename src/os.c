@@ -133,11 +133,15 @@ static void * ld_routine(void * args) {
 #else
 	os.krnl_pgd = malloc(PAGING_MAX_PGN * sizeof(uint32_t));
 #endif
+#ifdef MM_PAGING
+	os.mm = malloc(sizeof(struct mm_struct));
+	init_mm(os.mm, NULL);
+#endif
 	i=0;
 	printf("ld_routine\n");
 	while (i < num_processes) {
 		struct pcb_t * proc = load(ld_processes.path[i]);
-		struct krnl_t * krnl = proc->krnl = &os;	
+		struct krnl_t * krnl = proc->krnl = &os;
 
 #ifdef MLQ_SCHED
 		proc->prio = ld_processes.prio[i];
@@ -146,8 +150,6 @@ static void * ld_routine(void * args) {
 			next_slot(timer_id);
 		}
 #ifdef MM_PAGING
-		krnl->mm = malloc(sizeof(struct mm_struct));
-		init_mm(krnl->mm, proc);
 		krnl->mram = mram;
 		krnl->mswp = mswp;
 		krnl->active_mswp = active_mswp;

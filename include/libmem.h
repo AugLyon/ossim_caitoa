@@ -21,7 +21,7 @@ int liballoc(struct pcb_t *, addr_t, uint32_t);
 int libfree(struct pcb_t *, uint32_t);
 int libread(struct pcb_t*, uint32_t, addr_t, uint32_t*);
 int libwrite(struct pcb_t*, BYTE, uint32_t, addr_t);
-int libkmem_malloc(struct pcb_t*, uint32_t, uint32_t);
+int libkmem_malloc(struct pcb_t*, addr_t, addr_t);
 int libkmem_cache_alloc(struct pcb_t *, uint32_t, uint32_t);
 int libkmem_cache_pool_create(struct pcb_t*, uint32_t, uint32_t, uint32_t);
 int libkmem_copy_from_user(struct pcb_t*, uint32_t, uint32_t, uint32_t, uint32_t);
