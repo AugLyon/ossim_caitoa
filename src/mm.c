@@ -2,13 +2,13 @@
  * Copyright (C) 2026 pdnguyen of HCMC University of Technology VNU-HCM
  */
 
-/* Caitoa release
+/* LamiaAtrium release
  * Source Code License Grant: The authors hereby grant to Licensee
  * personal permission to use and modify the Licensed Source Code
  * for the sole purpose of studying while attending the course CO2018.
  */
  
- /* NOTICE this moudle is deprecated in Caitoa release
+ /* NOTICE this moudle is deprecated in LamiaAtrium release
   *        the structure is maintained for future 64bit-32bit
   *        backward compatible feature or PAE feature 
   */
