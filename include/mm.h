@@ -105,10 +105,22 @@ int enlist_pgn_node(struct pgn_t **pgnlist, addr_t pgn);
 int vmap_pgd_memset(struct pcb_t *caller, addr_t addr, int pgnum);
 addr_t vmap_page_range(struct pcb_t *caller, addr_t addr, int pgnum, 
                     struct framephy_struct *frames, struct vm_rg_struct *ret_rg);
-addr_t vm_map_ram(struct pcb_t *caller, addr_t astart, addr_t aend, addr_t mapstart, int incpgnum, struct vm_rg_struct *ret_rg);
+addr_t vm_map_range(struct pcb_t *caller, addr_t astart, addr_t aend, addr_t mapstart, int incpgnum, struct vm_rg_struct *ret_rg);
+addr_t vm_map_kernel(struct pcb_t *caller, addr_t astart, addr_t aend, addr_t mapstart, int incpgnum, struct vm_rg_struct *ret_rg);
 addr_t alloc_pages_range(struct pcb_t *caller, int incpgnum, struct framephy_struct **frm_lst);
 int __swap_cp_page(struct memphy_struct *mpsrc, addr_t srcfpn,
                 struct memphy_struct *mpdst, addr_t dstfpn) ;
+/* KMEM prototypes */
+addr_t __kmalloc(struct pcb_t *caller, int vmaid, int rgid, addr_t size, addr_t *alloc_addr);
+addr_t __kmem_cache_alloc(struct pcb_t *caller, int vmaid, int rgid, int cache_pool_id, addr_t *alloc_addr);
+
+/* VM region prototypes */
+int __read_user_mem(struct pcb_t *caller, int vmaid, int rgid, addr_t offset, BYTE *data);
+int __write_user_mem(struct pcb_t *caller, int vmaid, int rgid, addr_t offset, BYTE value);
+int __read_kernel_mem(struct pcb_t *caller, int vmaid, int rgid, addr_t offset, BYTE *data);
+int __write_kernel_mem(struct pcb_t *caller, int vmaid, int rgid, addr_t offset, BYTE value);
+
+/* Page directory prototypes */
 int get_pd_from_address(addr_t addr, addr_t* pgd, addr_t* p4d, addr_t* pud, addr_t* pmd, addr_t* pt);
 int get_pd_from_pagenum(addr_t pgn, addr_t* pgd, addr_t* p4d, addr_t* pud, addr_t* pmd, addr_t* pt);
 int pte_set_fpn(struct pcb_t *caller, addr_t pgn, addr_t fpn);

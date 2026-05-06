@@ -317,7 +317,7 @@ new_end = old_end + inc_amt;
 
 6. Ánh xạ vào RAM (Quan trọng):
 
-Gọi vm_map_ram(...): Hàm này (trong mm64.c) sẽ thực hiện việc gán các khung trang vật lý thực sự cho dải địa chỉ ảo mới vừa được mở rộng.
+Gọi vm_map_range(...): Hàm này (trong mm64.c) sẽ thực hiện việc gán các khung trang vật lý thực sự cho dải địa chỉ ảo mới vừa được mở rộng.
 
 Nếu không map được (hết RAM, lỗi...), trả về -1.
 
@@ -350,7 +350,7 @@ int inc_vma_limit(struct pcb_t *caller, int vmaid, addr_t inc_sz)
   /* The obtained vm area (only)
    * now will be alloc real ram region */
 
-//  if (vm_map_ram(caller, area->rg_start, area->rg_end, 
+//  if (vm_map_range(caller, area->rg_start, area->rg_end, 
 //                   old_end, incnumpage , newrg) < 0)
 //    return -1; /* Map the memory to MEMRAM */
 
@@ -376,7 +376,7 @@ int inc_vma_limit(struct pcb_t *caller, int vmaid, addr_t inc_sz)
   /* Ánh xạ “dummy” RAM cho vùng tăng thêm để hợp lệ hoá không gian usable */
   int incnumpage = (int)(inc_amt / PAGING_PAGESZ);
   struct vm_rg_struct mapped_rg;
-  if (vm_map_ram(caller, cur_vma->vm_start, new_end, old_end, incnumpage, &mapped_rg) < 0)
+  if (vm_map_range(caller, cur_vma->vm_start, new_end, old_end, incnumpage, &mapped_rg) < 0)
     return -1;
 
   /* Nâng giới hạn vùng và sbrk (đưa usable top lên đầu mới) */

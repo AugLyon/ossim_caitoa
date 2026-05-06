@@ -191,7 +191,7 @@ addr_t alloc_pages_range(struct pcb_t *caller, int req_pgnum, struct framephy_st
 }
 
 /*
- * vm_map_ram - do the mapping all vm are to ram storage device
+ * vm_map_range - do the mapping all vm are to ram storage device
  * @caller    : caller
  * @astart    : vm area start
  * @aend      : vm area end
@@ -199,7 +199,7 @@ addr_t alloc_pages_range(struct pcb_t *caller, int req_pgnum, struct framephy_st
  * @incpgnum  : number of mapped page
  * @ret_rg    : returned region
  */
-addr_t vm_map_ram(struct pcb_t *caller, addr_t astart, addr_t aend, addr_t mapstart, int incpgnum, struct vm_rg_struct *ret_rg)
+addr_t vm_map_range(struct pcb_t *caller, addr_t astart, addr_t aend, addr_t mapstart, int incpgnum, struct vm_rg_struct *ret_rg)
 {
   printf("[ERROR] %s: This feature 32 bit mode is deprecated\n", __func__);
   return 0;
