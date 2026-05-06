@@ -63,9 +63,33 @@ struct pcb_t * get_mlq_proc(void) {
 	/*TODO: get a process from PRIORITY [ready_queue].
 	 *      It worth to protect by a mechanism.
 	 * */
+	int prio;
+	int reset_needed = 1;
+	for (prio = 0; prio < MAX_PRIO; prio++) {
+    	if (slot[prio] > 0 && !empty(&mlq_ready_queue[prio])) {
+        reset_needed = 0;
+        break;
+    	}
+	}
+
+	if (reset_needed) {
+		for (prio = 0; prio < MAX_PRIO; prio++) {
+			slot[prio] = MAX_PRIO - prio;
+		}
+	}
+	
+	for(prio = 0; prio < MAX_PRIO; prio++){
+		if(!empty(&mlq_ready_queue[prio])&& slot[prio] > 0){
+			proc = dequeue(&mlq_ready_queue[prio]);
+			slot[prio]--;
+			break;
+		}
+	}
 
 	if (proc != NULL)
 		enqueue(&running_list, proc);
+
+	pthread_mutex_unlock(&queue_lock);
 	return proc;	
 }
 
@@ -80,6 +104,8 @@ void put_mlq_proc(struct pcb_t * proc) {
 	 */
 
 	pthread_mutex_lock(&queue_lock);
+
+	enqueue(&running_list, proc);
 	enqueue(&mlq_ready_queue[proc->prio], proc);
 	pthread_mutex_unlock(&queue_lock);
 }
@@ -119,7 +145,10 @@ struct pcb_t * get_proc(void) {
 	 *       It worth to protect by a mechanism.
 	 * 
 	 */
-
+	if (!empty(&ready_queue)) {
+		proc = dequeue(&ready_queue);
+		enqueue(&running_list, proc);
+	}
 	pthread_mutex_unlock(&queue_lock);
 
 	return proc;
@@ -135,7 +164,8 @@ void put_proc(struct pcb_t * proc) {
 	 */
 
 	pthread_mutex_lock(&queue_lock);
-	enqueue(&run_queue, proc);
+	enqueue(&running_list, proc);
+	enqueue(&ready_queue, proc);
 	pthread_mutex_unlock(&queue_lock);
 }
 
