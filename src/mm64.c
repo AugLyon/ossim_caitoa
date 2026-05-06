@@ -153,7 +153,7 @@ int pte_set_swap(struct pcb_t *caller, addr_t pgn, int swptyp, addr_t swpoff)
   // pte = &krnl->mm->pt;
   pte = get_or_create_pte(mm, pgd, p4d, pud, pmd, pt);
 #else
-  pte = &krnl->mm->pgd[pgn];
+  pte = &caller->mm->pgd[pgn];
 #endif
   *pte = 0;
   CLRBIT(*pte, PAGING_PTE_PRESENT_MASK);
@@ -191,7 +191,7 @@ int pte_set_fpn(struct pcb_t *caller, addr_t pgn, addr_t fpn)
   // pte = &krnl->mm->pt;
   pte = get_or_create_pte(mm, pgd, p4d, pud, pmd, pt);
 #else
-  pte = &krnl->mm->pgd[pgn];
+  pte = &caller->mm->pgd[pgn];
 #endif
   *pte = 0;
   SETBIT(*pte, PAGING_PTE_PRESENT_MASK);
@@ -494,10 +494,10 @@ int __swap_cp_page(struct memphy_struct *mpsrc, addr_t srcfpn,
 {
   int cellidx;
   addr_t addrsrc, addrdst;
-  for (cellidx = 0; cellidx < PAGING_PAGESZ; cellidx++)
+  for (cellidx = 0; cellidx < PAGING64_PAGESZ; cellidx++)
   {
-    addrsrc = srcfpn * PAGING_PAGESZ + cellidx;
-    addrdst = dstfpn * PAGING_PAGESZ + cellidx;
+    addrsrc = srcfpn * PAGING64_PAGESZ + cellidx;
+    addrdst = dstfpn * PAGING64_PAGESZ + cellidx;
 
     BYTE data;
     MEMPHY_read(mpsrc, addrsrc, &data);

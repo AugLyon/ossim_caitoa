@@ -240,7 +240,7 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
     {
       target_swpfpn = GETVAL(pte, PAGING_PTE_SWPOFF_MASK, PAGING_PTE_SWPOFF_LOBIT);
     }
-    if (MEMPHY_get_freefp(caller->krnl->mram, &free_fpn) == 0)
+    if (MEMPHY_get_freefp(caller->mram, &free_fpn) == 0)
     {
       if (is_swapped)
       {
@@ -249,7 +249,7 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
         regs.a2 = target_swpfpn;
         regs.a3 = free_fpn;
         _syscall(caller->krnl, caller->pid, 17, &regs);
-        MEMPHY_put_freefp(caller->krnl->active_mswp, target_swpfpn);
+        MEMPHY_put_freefp(caller->active_mswp, target_swpfpn);
       }
       pte_set_fpn(caller, pgn, free_fpn);
       enlist_pgn_node(&caller->mm->fifo_pgn, pgn);
@@ -270,9 +270,7 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
       {
         return -1;
       }
-
-      /* Get free frame in MEMSWP */
-      if (MEMPHY_get_freefp(caller->krnl->active_mswp, &swpfpn) == -1)
+      if (MEMPHY_get_freefp(caller->active_mswp, &swpfpn) == -1)
       {
         return -1;
       }
@@ -299,7 +297,7 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
         regs.a3 = tgtfpn;
         _syscall(caller->krnl, caller->pid, 17, &regs);
 
-        MEMPHY_put_freefp(caller->krnl->active_mswp, target_swpfpn);
+        MEMPHY_put_freefp(caller->active_mswp, target_swpfpn);
       }
       pte_set_swap(caller, vicpgn, 0, swpfpn);
       /* Update its online status of the target page */
@@ -574,6 +572,7 @@ addr_t __kmalloc(struct pcb_t *caller, int vmaid, int rgid, addr_t size, addr_t 
    *       update krnl_pgd for OS kernel level management */
   pthread_mutex_lock(&mmvm_lock);
   struct krnl_t *krnl = caller->krnl;
+  addr_t kernel_base = 0xff11000000000000ULL;
   int page_size = PAGING64_PAGESZ;
   int max_pgn = PAGING64_MAX_PGN;
   int num_pages = (int)(PAGING64_PAGE_ALIGNSZ(size) / page_size);
@@ -606,9 +605,10 @@ addr_t __kmalloc(struct pcb_t *caller, int vmaid, int rgid, addr_t size, addr_t 
     pthread_mutex_unlock(&mmvm_lock);
     return -1;
   }
+  addr_t base_pgn = kernel_base / page_size;
   addr_t start_pgn = -1;
   int consecutive_free_pages = 0;
-  for (int i = 0; i < max_pgn; i++)
+  for (addr_t i = base_pgn; i < max_pgn; i++)
   {
     addr_t current_pte = pte_get_kernel_entry(krnl, i);
     if (current_pte == 0)
@@ -737,6 +737,11 @@ addr_t __kmem_cache_alloc(struct pcb_t *caller, int vmaid, int rgid, int cache_p
     return 0;
   }
   addr_t addr = krnl->mm->kcpooltbl[cache_pool_id].storage;
+  if (addr + krnl->mm->kcpooltbl[cache_pool_id].size > krnl->mm->symrgtbl[cache_pool_id].rg_end)
+  {
+    pthread_mutex_unlock(&mmvm_lock);
+    return 0; // Out of memory in this cache pool
+  }
   *alloc_addr = addr;
   krnl->mm->kcpooltbl[cache_pool_id].storage += krnl->mm->kcpooltbl[cache_pool_id].size;
   if (rgid >= 0 && rgid < PAGING_MAX_SYMTBL_SZ)
@@ -918,24 +923,59 @@ int free_pcb_memph(struct pcb_t *caller)
   pthread_mutex_lock(&mmvm_lock);
   int pagenum, fpn;
   addr_t pte;
-
-  for (pagenum = 0; pagenum < PAGING_MAX_PGN; pagenum++)
-  {
-    pte = pte_get_entry(caller,pagenum);
-
-    if (PAGING_PAGE_PRESENT(pte))
+  struct vm_area_struct *vma = caller->mm->mmap;
+  while(vma){
+    addr_t addr = vma->vm_start;
+    while (addr < vma->sbrk)
     {
-      fpn = PAGING_FPN(pte);
-      MEMPHY_put_freefp(caller->krnl->mram, fpn);
+      addr_t pgn = PAGING_PGN(addr);
+      addr_t pte = pte_get_entry(caller, pgn);
+
+      if (PAGING_PAGE_PRESENT(pte))
+      {
+        MEMPHY_put_freefp(caller->krnl->mram, PAGING_FPN(pte));
+      }
+      else if ((pte & PAGING_PTE_SWAPPED_MASK) != 0)
+      {
+        MEMPHY_put_freefp(caller->krnl->active_mswp, GETVAL(pte, PAGING_PTE_SWPOFF_MASK, PAGING_PTE_SWPOFF_LOBIT));
+      }
+      addr += PAGING64_PAGESZ;
     }
-    else
-    {
-      fpn = PAGING_SWP(pte);
-      if(fpn != 0)
-      MEMPHY_put_freefp(caller->krnl->active_mswp, fpn);
-    }
+    vma = vma->vm_next;
   }
-
+  if (caller->mm->pgd)
+  {
+    for (int i = 0; i < 512; i++)
+    {
+      if (caller->mm->pgd[i])
+      {
+        addr_t *p4d = (addr_t *)caller->mm->pgd[i];
+        for (int j = 0; j < 512; j++)
+        {
+          if (p4d[j])
+          {
+            addr_t *pud = (addr_t *)p4d[j];
+            for (int k = 0; k < 512; k++)
+            {
+              if (pud[k])
+              {
+                addr_t *pmd = (addr_t *)pud[k];
+                for (int m = 0; m < 512; m++)
+                {
+                  if (pmd[m])
+                    free((void *)pmd[m]);
+                }
+                free((void *)pud[k]);
+              }
+            }
+            free((void *)p4d[j]);
+          }
+        }
+        free((void *)caller->mm->pgd[i]);
+      }
+    }
+    free(caller->mm->pgd);
+  }
   pthread_mutex_unlock(&mmvm_lock);
   return 0;
 }
