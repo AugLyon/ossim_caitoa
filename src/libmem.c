@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
-#include "print_debug.h"
 static pthread_mutex_t mmvm_lock = PTHREAD_MUTEX_INITIALIZER;
 /*enlist_vm_freerg_list - add new rg to freerg_list
  *@mm: memory region

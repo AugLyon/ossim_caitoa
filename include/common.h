@@ -3,9 +3,9 @@
 
 /* Define structs and routine could be used by every source files */
 
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <pthread.h>
 
 #ifndef OSCFG_H
 #include "os-cfg.h"

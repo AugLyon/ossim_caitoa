@@ -11,6 +11,7 @@
 #ifndef OSMM_H
 #define OSMM_H
 
+#include <pthread.h>
 #include <stdint.h>
 
 #define MM_PAGING
