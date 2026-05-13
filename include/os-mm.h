@@ -146,6 +146,9 @@ struct memphy_struct {
    /* Management structure */
    struct framephy_struct *free_fp_list;
    struct framephy_struct *used_fp_list;
+
+   //memphy mutex lock
+   pthread_mutex_t memphy_lock;
 };
 
 #endif

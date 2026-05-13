@@ -255,6 +255,8 @@ int init_memphy(struct memphy_struct *mp, addr_t max_size, int randomflg)
    if (!mp->rdmflg) /* Not Ramdom acess device, then it serial device*/
       mp->cursor = 0;
 
+   // init the memphy_lock
+   pthread_mutex_init(&mp->memphy_lock, NULL);
    return 0;
 }
 
