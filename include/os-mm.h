@@ -120,6 +120,8 @@ struct mm_struct {
    /* kmem cache pool */
    struct kcache_pool_struct *kcpooltbl;
 
+   pthread_mutex_t mm_lock;
+
 };
 
 

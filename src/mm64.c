@@ -554,6 +554,9 @@ int init_mm(struct mm_struct *mm, struct pcb_t *caller)
   }
   mm->kcpooltbl = calloc(PAGING_MAX_SYMTBL_SZ, sizeof(struct kcache_pool_struct));
   mm->fifo_pgn = NULL;
+
+  // init mm mutex lock
+  pthread_mutex_init(&mm->mm_lock, NULL);
   return 0;
 }
 
