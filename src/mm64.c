@@ -94,8 +94,12 @@ int get_pd_from_address(addr_t addr, addr_t *pgd, addr_t *p4d, addr_t *pud, addr
 int get_pd_from_pagenum(addr_t pgn, addr_t *pgd, addr_t *p4d, addr_t *pud, addr_t *pmd, addr_t *pt)
 {
   /* Shift the address to get page num and perform the mapping*/
-  return get_pd_from_address(pgn << PAGING64_ADDR_PT_SHIFT,
-                             pgd, p4d, pud, pmd, pt);
+  get_pd_from_address(pgn << PAGING64_ADDR_PT_SHIFT, pgd, p4d, pud, pmd, pt);
+
+  /* THE SMOKING GUN PRINT */
+  printf("DEBUG MATH: PGN %ld calculated as -> PGD:%ld P4D:%ld PUD:%ld PMD:%ld PT:%ld\n",
+         (long)pgn, (long)*pgd, (long)*p4d, (long)*pud, (long)*pmd, (long)*pt);
+  return 0;
 }
 
 addr_t *get_or_create_pte(struct mm_struct *mm, addr_t pgd, addr_t p4d, addr_t pud, addr_t pmd, addr_t pt)
@@ -514,6 +518,8 @@ int __swap_cp_page(struct memphy_struct *mpsrc, addr_t srcfpn,
  */
 int init_mm(struct mm_struct *mm, struct pcb_t *caller)
 {
+  if(mm == NULL)
+  return -1;
   struct vm_area_struct *vma0 = calloc(1, sizeof(struct vm_area_struct));
 
   /* TODO init page table directory */
@@ -670,34 +676,34 @@ int print_list_pgn(struct pgn_t *ip)
 
 int print_pgtbl(struct pcb_t *caller, addr_t start, addr_t end)
 {
-  addr_t pgn_start = start >> PAGING64_ADDR_PT_SHIFT, pgn_end = end >> PAGING64_ADDR_PT_SHIFT;
   struct mm_struct *mm = caller->mm;
   if (mm == NULL || mm->pgd == NULL)
-  {
     return -1;
-  }
-
+  printf("print_pgtbl:\n");
   /* TODO traverse the page map and dump the page directory entries */
-  for (addr_t pgit = pgn_start; pgit < pgn_end; pgit++)
+  for (int pgd_idx = 0; pgd_idx < 512; pgd_idx++)
   {
-    addr_t pgd = 0, p4d = 0, pud = 0, pmd = 0, pt = 0;
-    get_pd_from_pagenum(pgit, &pgd, &p4d, &pud, &pmd, &pt);
-    if (mm->pgd[pgd] == 0)
+    if (mm->pgd[pgd_idx] == 0)
       continue;
-    addr_t *p4d_table = (addr_t *)mm->pgd[pgd];
-    if (p4d_table[p4d] == 0)
-      continue;
-    addr_t *pud_table = (addr_t *)p4d_table[p4d];
-    if (pud_table[pud] == 0)
-      continue;
-    addr_t *pmd_table = (addr_t *)pud_table[pud];
-    if (pmd_table[pmd] == 0)
-      continue;
-    addr_t *pt_table = (addr_t *)pmd_table[pmd];
-    addr_t pte = pt_table[pt];
-    if (pte != 0)
+    addr_t *p4d_table = (addr_t *)mm->pgd[pgd_idx];
+
+    for (int p4d_idx = 0; p4d_idx < 512; p4d_idx++)
     {
-      printf("pgn: %016llx, pte: %016llx\n", (unsigned long long)pgit, (unsigned long long)pte);
+      if (p4d_table[p4d_idx] == 0)
+        continue;
+      addr_t *pud_table = (addr_t *)p4d_table[p4d_idx];
+
+      for (int pud_idx = 0; pud_idx < 512; pud_idx++)
+      {
+        if (pud_table[pud_idx] == 0)
+          continue;
+        addr_t *pmd_table = (addr_t *)pud_table[pud_idx];
+        printf(" PDG=%lx P4g=%lx PUD=%lx PMD=%lx\n",
+               (unsigned long)mm->pgd,
+               (unsigned long)p4d_table,
+               (unsigned long)pud_table,
+               (unsigned long)pmd_table);
+      }
     }
   }
   return 0;

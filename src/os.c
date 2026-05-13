@@ -94,6 +94,7 @@ static void *cpu_routine(void *args)
 		{
 			/* No process to run, exit */
 			printf("\tCPU %d stopped\n", id);
+			fflush(stdout);
 			break;
 		}
 		else if (proc == NULL)
@@ -108,6 +109,7 @@ static void *cpu_routine(void *args)
 			printf("\tCPU %d: Dispatched process %2d\n",
 				   id, proc->pid);
 			time_left = time_slot;
+			fflush(stdout);
 		}
 
 		/* Run current process */
@@ -133,6 +135,7 @@ static void *ld_routine(void *args)
 	/* TODO init kernel page table directory */
 #ifdef MM64
 	os.krnl_pgd = malloc(PAGING64_MAX_PGN * sizeof(addr_t));
+	os.krnl_pgd = malloc(PAGING64_MAX_PGN * sizeof(addr_t));
 	os.krnl_p4d = malloc(PAGING64_MAX_PGN * sizeof(addr_t));
 	os.krnl_pud = malloc(PAGING64_MAX_PGN * sizeof(addr_t));
 	os.krnl_pmd = malloc(PAGING64_MAX_PGN * sizeof(addr_t));
@@ -140,18 +143,15 @@ static void *ld_routine(void *args)
 
 	for (i = 0; i < PAGING64_MAX_PGN; i++)
 	{
-		os.krnl_pgd[i] = (addr_t)&os.krnl_p4d;
-		os.krnl_p4d[i] = (addr_t)&os.krnl_pud;
-		os.krnl_pud[i] = (addr_t)&os.krnl_pmd;
-		os.krnl_pmd[i] = (addr_t)&os.krnl_pt;
-		os.krnl_pt[i] = 0;
+		os.krnl_pgd[i] = 0;
 	}
 #else
 	os.krnl_pgd = malloc(PAGING_MAX_PGN * sizeof(uint32_t));
 #endif
 #ifdef MM_PAGING
 	os.mm = malloc(sizeof(struct mm_struct));
-	init_mm(os.mm, NULL);
+	if (init_mm(os.mm, NULL) != -1)
+		;
 #endif
 	i = 0;
 	printf("ld_routine\n");
@@ -170,6 +170,9 @@ static void *ld_routine(void *args)
 #ifdef MM_PAGING
 		proc->mm = (struct mm_struct *)malloc(sizeof(struct mm_struct));
 		init_mm(proc->mm, proc);
+		proc->mram = mram;
+		proc->mswp = mswp;
+		proc->active_mswp = active_mswp;
 		krnl->mram = mram;
 		krnl->mswp = mswp;
 		krnl->active_mswp = active_mswp;

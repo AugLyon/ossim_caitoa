@@ -69,7 +69,7 @@ int run(struct pcb_t *proc)
 	struct inst_t ins = proc->code->text[proc->pc];
 	proc->pc++;
 	int stat = 1;
-switch (ins.opcode)
+	switch (ins.opcode)
 	{
 	case CALC:
 		stat = calc(proc);

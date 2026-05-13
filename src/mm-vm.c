@@ -8,21 +8,21 @@
  * for the sole purpose of studying while attending the course CO2018.
  */
 
-//#ifdef MM_PAGING
+// #ifdef MM_PAGING
 /*
  * PAGING based Memory Management
  * Virtual memory module mm/mm-vm.c
  */
 
- /*================================================================================================================================================================================*/
+/*================================================================================================================================================================================*/
 /*=============================================================================ĐỌC TỪ ĐÂY NHA MN===================================================================================*/
- /*================================================================================================================================================================================*/
- /*
- File mm-vm.c là module chịu trách nhiệm quản lý Bộ nhớ Ảo (Virtual Memory - VM) ở mức cấu trúc vùng (VMA).
- Nếu libmem.c lo việc quản lý các "căn nhà" nhỏ (vm_rg_struct) bên trong một "khu phố", thì mm-vm.c chính là kiến trúc sư lo việc quản lý, xây dựng và mở rộng chính các "khu phố" (vm_area_struct) đó. (trong pdf của mình có minh họa)
+/*================================================================================================================================================================================*/
+/*
+File mm-vm.c là module chịu trách nhiệm quản lý Bộ nhớ Ảo (Virtual Memory - VM) ở mức cấu trúc vùng (VMA).
+Nếu libmem.c lo việc quản lý các "căn nhà" nhỏ (vm_rg_struct) bên trong một "khu phố", thì mm-vm.c chính là kiến trúc sư lo việc quản lý, xây dựng và mở rộng chính các "khu phố" (vm_area_struct) đó. (trong pdf của mình có minh họa)
 
 
- Chức năng tổng quan của mm-vm.c
+Chức năng tổng quan của mm-vm.c
 1. Quản lý Danh sách VMA: Tìm kiếm và truy xuất các cấu trúc vm_area_struct (VMA) dựa trên ID.
 
 2. Kiểm tra Chồng lấn (Overlap Validation): Đảm bảo rằng khi một vùng nhớ mới được cấp phát hoặc mở rộng, nó không xâm phạm vào địa chỉ của các vùng nhớ khác đã tồn tại.
@@ -43,9 +43,7 @@ Các thư viện liên quan
 4. <stdio.h>: Dùng cho việc in ấn, debug (nếu có).
 
 5. <pthread.h>: Mặc dù được include, nhưng trong các hàm hiện tại của file này chưa sử dụng mutex trực tiếp (việc đồng bộ hóa chủ yếu được xử lý ở lớp libmem.c gọi xuống).
- */
-
-
+*/
 
 #include "string.h"
 #include "mm.h"
@@ -55,27 +53,27 @@ Các thư viện liên quan
 #include <pthread.h>
 /* --- [OVERRIDE] GHI ĐÈ CẤU HÌNH CHO CHẾ ĐỘ 64-BIT --- */
 #ifdef MM64
-  /* 1. Ghi đè kích thước trang (4096 thay vì 256) */
-  #undef PAGING_PAGESZ
-  #define PAGING_PAGESZ PAGING64_PAGESZ 
+/* 1. Ghi đè kích thước trang (4096 thay vì 256) */
+#undef PAGING_PAGESZ
+#define PAGING_PAGESZ PAGING64_PAGESZ
 
-  /* 2. Ghi đè cách tính Offset (Lấy 12 bit cuối thay vì 8 bit) */
-  #undef PAGING_OFFST
-  #define PAGING_OFFST(addr)  ((addr) & PAGING64_ADDR_OFFST_MASK)
+/* 2. Ghi đè cách tính Offset (Lấy 12 bit cuối thay vì 8 bit) */
+#undef PAGING_OFFST
+#define PAGING_OFFST(addr) ((addr) & PAGING64_ADDR_OFFST_MASK)
 
-  /* 3. Ghi đè cách tính số trang (Dịch 12 bit thay vì 8 bit) */
-  #undef PAGING_PGN
-  #define PAGING_PGN(addr)    ((addr) >> PAGING64_ADDR_PT_SHIFT)
-  
-  /* 4. Ghi đè các macro bit */
-  #undef PAGING_PTE_FPN
-  #define PAGING_PTE_FPN(pte) PAGING64_PTE_FPN(pte)
-  
-  #undef PAGING_PTE_PRESENT
-  #define PAGING_PTE_PRESENT(pte) PAGING64_PTE_PRESENT(pte)
+/* 3. Ghi đè cách tính số trang (Dịch 12 bit thay vì 8 bit) */
+#undef PAGING_PGN
+#define PAGING_PGN(addr) ((addr) >> PAGING64_ADDR_PT_SHIFT)
 
-  #undef PAGING_PTE_SWAPPED
-  #define PAGING_PTE_SWAPPED(pte) PAGING64_PTE_SWAPPED(pte)
+/* 4. Ghi đè các macro bit */
+#undef PAGING_PTE_FPN
+#define PAGING_PTE_FPN(pte) PAGING64_PTE_FPN(pte)
+
+#undef PAGING_PTE_PRESENT
+#define PAGING_PTE_PRESENT(pte) PAGING64_PTE_PRESENT(pte)
+
+#undef PAGING_PTE_SWAPPED
+#define PAGING_PTE_SWAPPED(pte) PAGING64_PTE_SWAPPED(pte)
 #endif
 /* --------------------------------------------------- */
 
@@ -105,8 +103,10 @@ Kết quả: Trả về con trỏ pvma tìm được (hoặc NULL nếu duyệt 
 struct vm_area_struct *get_vma_by_num(struct mm_struct *mm, int vmaid)
 {
   /* guard NULL tuyệt đối trước khi deref === */
-  if (!mm) return NULL;
-  if (!mm->mmap) return NULL;
+  if (!mm)
+    return NULL;
+  if (!mm->mmap)
+    return NULL;
 
   struct vm_area_struct *pvma = mm->mmap;
 
@@ -115,10 +115,12 @@ struct vm_area_struct *get_vma_by_num(struct mm_struct *mm, int vmaid)
 
   while (vmait < vmaid)
   {
-    if (!pvma) return NULL;
+    if (!pvma)
+      return NULL;
 
     pvma = pvma->vm_next;
-    if (!pvma) return NULL;
+    if (!pvma)
+      return NULL;
 
     vmait = pvma->vm_id;
   }
@@ -140,10 +142,17 @@ Chi tiết Code:
 
 Gọi hàm cấp thấp __swap_cp_page (nằm trong mm64.c) để thực hiện copy dữ liệu vật lý từ mram sang active_mswp.
 */
-int __mm_swap_page(struct pcb_t *caller, addr_t vicfpn , addr_t swpfpn)
+int __mm_swap_page(struct pcb_t *caller, addr_t fpn_ram, addr_t fpn_swap, int is_swap_in)
 {
-    __swap_cp_page(caller->krnl->mram, vicfpn, caller->krnl->active_mswp, swpfpn);
-    return 0;
+  if (is_swap_in == 0)
+  {
+    __swap_cp_page(caller->krnl->mram, fpn_ram, caller->krnl->active_mswp, fpn_swap);
+  }
+  else
+  {
+    __swap_cp_page(caller->krnl->active_mswp, fpn_swap, caller->krnl->mram, fpn_ram);
+  }
+  return 0;
 }
 
 /*get_vm_area_node - get vm area for a number of pages
@@ -155,8 +164,8 @@ int __mm_swap_page(struct pcb_t *caller, addr_t vicfpn , addr_t swpfpn)
  *
  */
 
- /*
- get_vm_area_node_at_brk
+/*
+get_vm_area_node_at_brk
 Chức năng: Tạo ra một cấu trúc vm_rg_struct (region) mới nằm ngay tại đỉnh sbrk (program break) của VMA hiện tại. Hàm này thường được dùng để chuẩn bị cho việc cấp phát mới ở cuối heap.
 
 Chi tiết Code:
@@ -174,25 +183,26 @@ newrg->rg_start = cur_vma->sbrk;: Bắt đầu ngay tại đỉnh heap hiện t�
 newrg->rg_end = newrg->rg_start + eff_sz;: Kết thúc sau khi cộng thêm kích thước.
 
 Trả về newrg.
- */
+*/
 struct vm_rg_struct *get_vm_area_node_at_brk(struct pcb_t *caller, int vmaid, addr_t size, addr_t alignedsz)
 {
-  struct vm_rg_struct * newrg;
+  struct vm_rg_struct *newrg;
   /* TODO retrive current vma to obtain newrg, current comment out due to compiler redundant warning*/
-  //struct vm_area_struct *cur_vma = get_vma_by_num(caller->kernl->mm, vmaid);
+  // struct vm_area_struct *cur_vma = get_vma_by_num(caller->kernl->mm, vmaid);
 
-  //newrg = malloc(sizeof(struct vm_rg_struct));
+  // newrg = malloc(sizeof(struct vm_rg_struct));
 
   /* TODO: update the newrg boundary
   // newrg->rg_start = ...
   // newrg->rg_end = ...
   */
-  struct vm_area_struct *cur_vma = get_vma_by_num(caller->krnl->mm, vmaid);
-   if (!cur_vma) return NULL;
+  struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
+  if (!cur_vma)
+    return NULL;
 
-
-  newrg = (struct vm_rg_struct*)malloc(sizeof(struct vm_rg_struct));
-  if (!newrg) return NULL;
+  newrg = (struct vm_rg_struct *)malloc(sizeof(struct vm_rg_struct));
+  if (!newrg)
+    return NULL;
   addr_t eff_sz = (alignedsz > 0) ? alignedsz : size;
   newrg->rg_start = cur_vma->sbrk;
   newrg->rg_end = newrg->rg_start + eff_sz;
@@ -234,10 +244,10 @@ Logic này tương đương với toán học giao của hai đoạn thẳng: N�
 */
 int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, addr_t vmastart, addr_t vmaend)
 {
-    /* guard caller/krnl/mm/mmap === */
-  if (!caller || !caller->krnl || !caller->krnl->mm || !caller->krnl->mm->mmap)
+  /* guard caller/krnl/mm/mmap === */
+  if (!caller || !caller->mm || !caller->mm->mmap)
     return -1;
-  //struct vm_area_struct *vma = caller->krnl->mm->mmap;
+  // struct vm_area_struct *vma = caller->krnl->mm->mmap;
 
   /* TODO validate the planned memory area is not overlapped */
   if (vmastart >= vmaend)
@@ -245,7 +255,7 @@ int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, addr_t vmastart, a
     return -1;
   }
 
-  struct vm_area_struct *vma = caller->krnl->mm->mmap;
+  struct vm_area_struct *vma = caller->mm->mmap;
   if (vma == NULL)
   {
     return -1;
@@ -253,14 +263,15 @@ int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, addr_t vmastart, a
 
   /* TODO validate the planned memory area is not overlapped */
 
-  struct vm_area_struct *cur_area = get_vma_by_num(caller->krnl->mm, vmaid);
+  struct vm_area_struct *cur_area = get_vma_by_num(caller->mm, vmaid);
   if (cur_area == NULL)
   {
     return -1;
   }
 
   /* Kiểm tra phạm vi đề xuất nằm trong giới hạn của VMA hiện tại */
-  if (vmastart < cur_area->vm_start || vmaend > cur_area->vm_end) {
+  if (vmastart < cur_area->vm_start || vmaend > cur_area->vm_end)
+  {
     /* Với mô hình mở rộng vm_end dần, bước này có thể cho phép vượt vm_end cũ.
        Kiểm tra lỏng: chỉ cần vmastart <= vmaend; việc nâng vm_end sẽ được xử lý ở inc_vma_limit. */
     /* Không trả -1 ở đây để tránh chặn hợp lệ khi đang mở rộng; tiếp tục các kiểm tra chồng lắp với VMA khác. */
@@ -269,13 +280,14 @@ int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, addr_t vmastart, a
   /* Kiểm tra chồng lắp với các VMA khác (nếu có nhiều VMA) */
   while (vma != NULL)
   {
-    if (vma != cur_area )
+    if (vma != cur_area)
     {
       /* Tự tính overlap (không dựa vào macro OVERLAP vì hiện macro là 0)
          overlap nếu max(start) < min(end) */
       addr_t max_st = (vmastart > vma->vm_start) ? vmastart : vma->vm_start;
-      addr_t min_en = (vmaend   < vma->vm_end  ) ? vmaend   : vma->vm_end;
-      if (max_st < min_en) {
+      addr_t min_en = (vmaend < vma->vm_end) ? vmaend : vma->vm_end;
+      if (max_st < min_en)
+      {
         return -1; /* Overlap với VMA khác */
       }
     }
@@ -293,8 +305,8 @@ int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, addr_t vmastart, a
  *
  */
 
- /*
- inc_vma_limit
+/*
+inc_vma_limit
 Chức năng: Tăng giới hạn (vm_end và sbrk) của một VMA để có thêm không gian nhớ. Hàm này được gọi khi syscall SYSMEM_INC_OP được kích hoạt (từ liballoc khi hết chỗ).
 
 Chi tiết Code:
@@ -328,43 +340,47 @@ cur_vma->vm_end = new_end;: Cập nhật giới hạn vùng.
 cur_vma->sbrk = new_end;: Đẩy đỉnh heap lên mức mới.
 
 8. Trả về 0 (Thành công).
- */
+*/
 int inc_vma_limit(struct pcb_t *caller, int vmaid, addr_t inc_sz)
 {
-  //struct vm_rg_struct * newrg = malloc(sizeof(struct vm_rg_struct));
+  // struct vm_rg_struct * newrg = malloc(sizeof(struct vm_rg_struct));
 
-  /* TOTO with new address scheme, the size need tobe aligned 
+  /* TOTO with new address scheme, the size need tobe aligned
    *      the raw inc_sz maybe not fit pagesize
-   */ 
-  //addr_t inc_amt;
+   */
+  // addr_t inc_amt;
 
-//  int incnumpage =  inc_amt / PAGING_PAGESZ;
+  //  int incnumpage =  inc_amt / PAGING_PAGESZ;
 
   /* TODO Validate overlap of obtained region */
-  //if (validate_overlap_vm_area(caller, vmaid, area->rg_start, area->rg_end) < 0)
-  //  return -1; /*Overlap and failed allocation */
+  // if (validate_overlap_vm_area(caller, vmaid, area->rg_start, area->rg_end) < 0)
+  //   return -1; /*Overlap and failed allocation */
 
   /* TODO: Obtain the new vm area based on vmaid */
-  //cur_vma->vm_end... 
-  // inc_limit_ret...
+  // cur_vma->vm_end...
+  //  inc_limit_ret...
   /* The obtained vm area (only)
    * now will be alloc real ram region */
 
-//  if (vm_map_range(caller, area->rg_start, area->rg_end, 
-//                   old_end, incnumpage , newrg) < 0)
-//    return -1; /* Map the memory to MEMRAM */
+  //  if (vm_map_range(caller, area->rg_start, area->rg_end,
+  //                   old_end, incnumpage , newrg) < 0)
+  //    return -1; /* Map the memory to MEMRAM */
 
-  if (inc_sz == 0) return 0;
-  if (!caller || !caller->krnl || !caller->krnl->mm) {
+  if (inc_sz == 0)
+    return 0;
+  if (!caller || !caller->mm)
+  {
     return -1;
   }
 
-  struct vm_area_struct *cur_vma = get_vma_by_num(caller->krnl->mm, vmaid);
-  if (!cur_vma) return -1;
+  struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
+  if (!cur_vma)
+    return -1;
 
   /* Căn hàng theo kích thước trang của hệ (giữ dùng macro chung của dự án) */
-  addr_t inc_amt = PAGING_PAGE_ALIGNSZ(inc_sz);
-  if (inc_amt == 0) inc_amt = PAGING_PAGESZ;
+  addr_t inc_amt = PAGING64_PAGE_ALIGNSZ(inc_sz);
+  if (inc_amt == 0)
+    inc_amt = PAGING64_PAGESZ;
 
   addr_t old_end = cur_vma->vm_end;
   addr_t new_end = old_end + inc_amt;
@@ -374,14 +390,14 @@ int inc_vma_limit(struct pcb_t *caller, int vmaid, addr_t inc_sz)
     return -1;
 
   /* Ánh xạ “dummy” RAM cho vùng tăng thêm để hợp lệ hoá không gian usable */
-  int incnumpage = (int)(inc_amt / PAGING_PAGESZ);
+  int incnumpage = (int)(inc_amt / PAGING64_PAGESZ);
   struct vm_rg_struct mapped_rg;
-  if (vm_map_range(caller, cur_vma->vm_start, new_end, old_end, incnumpage, &mapped_rg) < 0)
-    return -1;
+  // if (vm_map_ram(caller, cur_vma->vm_start, new_end, old_end, incnumpage, &mapped_rg) < 0)
+  // return -1;
 
   /* Nâng giới hạn vùng và sbrk (đưa usable top lên đầu mới) */
   cur_vma->vm_end = new_end;
-  cur_vma->sbrk   = new_end;
+  cur_vma->sbrk = new_end;
 
   return 0;
 }
