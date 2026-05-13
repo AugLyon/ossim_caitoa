@@ -14,9 +14,11 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+
+extern struct krnl_t os;
+
 static struct queue_t ready_queue;
 static struct queue_t run_queue;
-static pthread_mutex_t queue_lock;
 
 static struct queue_t running_list;
 #ifdef MLQ_SCHED
@@ -29,10 +31,14 @@ int queue_empty(void)
 #ifdef MLQ_SCHED
 	unsigned long prio;
 	for (prio = 0; prio < MAX_PRIO; prio++)
-		if (!empty(&mlq_ready_queue[prio]))
+		if (!empty(&mlq_ready_queue[prio])) {
+			pthread_mutex_unlock(&os.sched_lock);
 			return 0;
+		}
 #endif
-	return (empty(&ready_queue) && empty(&run_queue));
+	int isEmpty = (empty(&ready_queue) && empty(&run_queue));
+	pthread_mutex_unlock(&os.sched_lock);
+	return isEmpty;
 }
 
 void init_scheduler(void)
@@ -49,7 +55,6 @@ void init_scheduler(void)
 	ready_queue.size = 0;
 	run_queue.size = 0;
 	running_list.size = 0;
-	pthread_mutex_init(&queue_lock, NULL);
 }
 
 #ifdef MLQ_SCHED
@@ -63,7 +68,7 @@ struct pcb_t *get_mlq_proc(void)
 {
 	struct pcb_t *proc = NULL;
 
-	pthread_mutex_lock(&queue_lock);
+	pthread_mutex_lock(&os.sched_lock);
 	/*TODO: get a process from PRIORITY [ready_queue].
 	 *      It worth to protect by a mechanism.
 	 * */
@@ -101,7 +106,7 @@ struct pcb_t *get_mlq_proc(void)
 		purgequeue(&running_list, proc);
 		enqueue(&running_list, proc);
 	}
-	pthread_mutex_unlock(&queue_lock);
+	pthread_mutex_unlock(&os.sched_lock);
 	return proc;
 }
 
@@ -116,11 +121,11 @@ void put_mlq_proc(struct pcb_t *proc)
 	 *
 	 */
 
-	pthread_mutex_lock(&queue_lock);
+	pthread_mutex_lock(&os.sched_lock);
 
 	purgequeue(&running_list, proc);
 	enqueue(&mlq_ready_queue[proc->prio], proc);
-	pthread_mutex_unlock(&queue_lock);
+	pthread_mutex_unlock(&os.sched_lock);
 }
 
 void add_mlq_proc(struct pcb_t *proc)
@@ -134,9 +139,9 @@ void add_mlq_proc(struct pcb_t *proc)
 	 *
 	 */
 
-	pthread_mutex_lock(&queue_lock);
+	pthread_mutex_lock(&os.sched_lock);
 	enqueue(&mlq_ready_queue[proc->prio], proc);
-	pthread_mutex_unlock(&queue_lock);
+	pthread_mutex_unlock(&os.sched_lock);
 }
 
 struct pcb_t *get_proc(void)
@@ -158,7 +163,7 @@ struct pcb_t *get_proc(void)
 {
 	struct pcb_t *proc = NULL;
 
-	pthread_mutex_lock(&queue_lock);
+	pthread_mutex_lock(&os.sched_lock);
 	/*TODO: get a process from [ready_queue].
 	 *       It worth to protect by a mechanism.
 	 *
@@ -168,7 +173,7 @@ struct pcb_t *get_proc(void)
 		proc = dequeue(&ready_queue);
 		enqueue(&running_list, proc);
 	}
-	pthread_mutex_unlock(&queue_lock);
+	pthread_mutex_unlock(&os.sched_lock);
 
 	return proc;
 }
@@ -183,10 +188,10 @@ void put_proc(struct pcb_t *proc)
 	 *
 	 */
 
-	pthread_mutex_lock(&queue_lock);
+	pthread_mutex_lock(&os.sched_lock);
 	enqueue(&running_list, proc);
 	enqueue(&ready_queue, proc);
-	pthread_mutex_unlock(&queue_lock);
+	pthread_mutex_unlock(&os.sched_lock);
 }
 
 void add_proc(struct pcb_t *proc)
@@ -199,8 +204,8 @@ void add_proc(struct pcb_t *proc)
 	 *
 	 */
 
-	pthread_mutex_lock(&queue_lock);
+	pthread_mutex_lock(&os.sched_lock);
 	enqueue(&ready_queue, proc);
-	pthread_mutex_unlock(&queue_lock);
+	pthread_mutex_unlock(&os.sched_lock);
 }
 #endif
