@@ -70,11 +70,12 @@ int MEMPHY_read(struct memphy_struct *mp, addr_t addr, BYTE *value)
 {
    if (mp == NULL || addr >= mp->maxsz) // ADD: || addr >= mp->maxsz
       return -1;
+   pthread_mutex_lock(&mp->memphy_lock);  // lock device
    if (mp->rdmflg)
       *value = mp->storage[addr];
    else /* Sequential access device */
-      return MEMPHY_seq_read(mp, addr, value);
-
+      MEMPHY_seq_read(mp, addr, value);
+   pthread_mutex_unlock(&mp->memphy_lock);   // unlock device
    return 0;
 }
 
@@ -111,13 +112,15 @@ int MEMPHY_write(struct memphy_struct *mp, addr_t addr, BYTE data)
    {
       return -1;
    }
+   pthread_mutex_lock(&mp->memphy_lock);
    if (mp->rdmflg){
       mp->storage[addr] = data;
    }
    else /* Sequential access device */
    {
-      return MEMPHY_seq_write(mp, addr, data);
+      MEMPHY_seq_write(mp, addr, data);
    }
+   pthread_mutex_unlock(&mp->memphy_lock);
    return 0;
 }
 
