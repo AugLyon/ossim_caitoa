@@ -144,6 +144,7 @@ Gọi hàm cấp thấp __swap_cp_page (nằm trong mm64.c) để thực hiện 
 */
 int __mm_swap_page(struct pcb_t *caller, addr_t fpn_ram, addr_t fpn_swap, int is_swap_in)
 {
+  pthread_mutex_lock(&caller->mm->mm_lock); // lock
   if (is_swap_in == 0)
   {
     __swap_cp_page(caller->krnl->mram, fpn_ram, caller->krnl->active_mswp, fpn_swap);
@@ -152,6 +153,7 @@ int __mm_swap_page(struct pcb_t *caller, addr_t fpn_ram, addr_t fpn_swap, int is
   {
     __swap_cp_page(caller->krnl->active_mswp, fpn_swap, caller->krnl->mram, fpn_ram);
   }
+  pthread_mutex_unlock(&caller->mm->mm_lock); // unlock
   return 0;
 }
 
@@ -373,9 +375,13 @@ int inc_vma_limit(struct pcb_t *caller, int vmaid, addr_t inc_sz)
     return -1;
   }
 
+  pthread_mutex_lock(&caller->mm->mm_lock); // lock
+
   struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
-  if (!cur_vma)
+  if (!cur_vma) {
+    pthread_mutex_unlock(&caller->mm->mm_lock); // unlock on error
     return -1;
+  }
 
   /* Căn hàng theo kích thước trang của hệ (giữ dùng macro chung của dự án) */
   addr_t inc_amt = PAGING64_PAGE_ALIGNSZ(inc_sz);
@@ -386,19 +392,23 @@ int inc_vma_limit(struct pcb_t *caller, int vmaid, addr_t inc_sz)
   addr_t new_end = old_end + inc_amt;
 
   /* Kiểm tra chồng lắp với các VMA khác khi mở rộng ranh giới (old_end -> new_end) */
-  if (validate_overlap_vm_area(caller, vmaid, old_end, new_end) < 0)
+  if (validate_overlap_vm_area(caller, vmaid, old_end, new_end) < 0) {
+    pthread_mutex_unlock(&caller->mm->mm_lock); // unlock on error
     return -1;
+  }
 
   /* Ánh xạ “dummy” RAM cho vùng tăng thêm để hợp lệ hoá không gian usable */
   int incnumpage = (int)(inc_amt / PAGING64_PAGESZ);
   struct vm_rg_struct mapped_rg;
-  if (vm_map_ram(caller, cur_vma->vm_start, new_end, old_end, incnumpage, &mapped_rg) < 0)
-  return -1;
+  if (vm_map_ram(caller, cur_vma->vm_start, new_end, old_end, incnumpage, &mapped_rg) < 0) {
+    pthread_mutex_unlock(&caller->mm->mm_lock); //unlock on error
+    return -1;
+  }
 
   /* Nâng giới hạn vùng và sbrk (đưa usable top lên đầu mới) */
   cur_vma->vm_end = new_end;
   cur_vma->sbrk = new_end;
-
+  pthread_mutex_unlock(&caller->mm->mm_lock); // unlock on success
   return 0;
 }
 
