@@ -392,8 +392,8 @@ int inc_vma_limit(struct pcb_t *caller, int vmaid, addr_t inc_sz)
   /* Ánh xạ “dummy” RAM cho vùng tăng thêm để hợp lệ hoá không gian usable */
   int incnumpage = (int)(inc_amt / PAGING64_PAGESZ);
   struct vm_rg_struct mapped_rg;
-  // if (vm_map_ram(caller, cur_vma->vm_start, new_end, old_end, incnumpage, &mapped_rg) < 0)
-  // return -1;
+  if (vm_map_ram(caller, cur_vma->vm_start, new_end, old_end, incnumpage, &mapped_rg) < 0)
+  return -1;
 
   /* Nâng giới hạn vùng và sbrk (đưa usable top lên đầu mới) */
   cur_vma->vm_end = new_end;
