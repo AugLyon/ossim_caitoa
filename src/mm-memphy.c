@@ -159,10 +159,13 @@ int MEMPHY_get_freefp(struct memphy_struct *mp, addr_t *retfpn)
 {
    if (mp == NULL)
       return -1; // ADD: if(mp == NULL) return -1;
+   pthread_mutex_lock(&mp->memphy_lock);  // lock access
    struct framephy_struct *fp = mp->free_fp_list;
 
-   if (fp == NULL)
+   if (fp == NULL) {
+      pthread_mutex_unlock(&mp->memphy_lock); // unlock access
       return -1;
+   }
 
    *retfpn = fp->fpn;
    mp->free_fp_list = fp->fp_next;
@@ -172,6 +175,7 @@ int MEMPHY_get_freefp(struct memphy_struct *mp, addr_t *retfpn)
     */
    fp->fp_next = mp->used_fp_list; // FIX: free framephy -> move to used_fp
    mp->used_fp_list = fp;          // initial state: free(fp);
+   pthread_mutex_unlock(&mp->memphy_lock);   // unlock access
 
    return 0;
 }
@@ -203,6 +207,7 @@ int MEMPHY_put_freefp(struct memphy_struct *mp, addr_t fpn)
 {
    if (mp == NULL)
       return -1; // ADD: if(mp == NULL) return -1;
+   pthread_mutex_lock(&mp->memphy_lock);  // lock access
    struct framephy_struct *fp = mp->free_fp_list;
    /*   struct framephy_struct *newnode = malloc(sizeof(struct framephy_struct));
 
@@ -219,6 +224,7 @@ int MEMPHY_put_freefp(struct memphy_struct *mp, addr_t fpn)
       used_fp->fp_next = mp->free_fp_list;
       used_fp->owner = NULL;
       mp->free_fp_list = used_fp;
+      pthread_mutex_unlock(&mp->memphy_lock);   // unlock access
       return 0;
    }
    while (used_fp != NULL)
@@ -230,11 +236,12 @@ int MEMPHY_put_freefp(struct memphy_struct *mp, addr_t fpn)
          temp->fp_next = mp->free_fp_list;
          temp->owner = NULL;
          mp->free_fp_list = temp;
+         pthread_mutex_unlock(&mp->memphy_lock);   // unlock access
          return 0;
       }
       used_fp = used_fp->fp_next;
    }
-
+   pthread_mutex_unlock(&mp->memphy_lock);   // unlock access
    return -1;
 }
 
