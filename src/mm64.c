@@ -340,7 +340,6 @@ int vmap_pgd_memset(struct pcb_t *caller, // process call
                     addr_t addr,          // start address which is aligned to pagesz
                     int pgnum)            // num of mapping page
 {
-  pthread_mutex_lock(&caller->mm->mm_lock); // lock
   int pgit = 0;
   uint64_t pattern = 0xdeadbeef;
 
@@ -352,7 +351,6 @@ int vmap_pgd_memset(struct pcb_t *caller, // process call
     addr_t current_pgn = pgn_start + pgit;
     pte_set_entry(caller, current_pgn, pattern);
   }
-  pthread_mutex_unlock(&caller->mm->mm_lock); // unlock
   return 0;
 }
 
@@ -365,7 +363,6 @@ addr_t vmap_page_range(struct pcb_t *caller,           // process call
                        struct framephy_struct *frames, // list of the mapped frames
                        struct vm_rg_struct *ret_rg)    // return mapped region, the real mapped fp
 {                                                      // no guarantee all given pages are mapped
-  pthread_mutex_lock(&caller->mm->mm_lock); // lock for the entire range
   struct framephy_struct *fpit = frames;
   int pgit = 0;
   addr_t pgn_start = addr >> PAGING64_ADDR_PT_SHIFT;
@@ -388,7 +385,6 @@ addr_t vmap_page_range(struct pcb_t *caller,           // process call
      * Enqueue new usage page */
     enlist_pgn_node(&caller->mm->fifo_pgn, current_pgn);
   }
-  pthread_mutex_unlock(&caller->mm->mm_lock); // unlock
   return 0;
 }
 
