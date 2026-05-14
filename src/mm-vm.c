@@ -407,7 +407,6 @@ int inc_vma_limit(struct pcb_t *caller, int vmaid, addr_t inc_sz)
 
   /* Nâng giới hạn vùng và sbrk (đưa usable top lên đầu mới) */
   cur_vma->vm_end = new_end;
-  cur_vma->sbrk = new_end;
   pthread_mutex_unlock(&caller->mm->mm_lock); // unlock on success
   return 0;
 }
