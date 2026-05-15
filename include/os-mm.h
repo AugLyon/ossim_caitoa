@@ -11,6 +11,7 @@
 #ifndef OSMM_H
 #define OSMM_H
 
+#include <pthread.h>
 #include <stdint.h>
 
 #define MM_PAGING
@@ -120,6 +121,8 @@ struct mm_struct {
    /* kmem cache pool */
    struct kcache_pool_struct *kcpooltbl;
 
+   pthread_mutex_t mm_lock;
+
 };
 
 
@@ -146,6 +149,9 @@ struct memphy_struct {
    /* Management structure */
    struct framephy_struct *free_fp_list;
    struct framephy_struct *used_fp_list;
+
+   //memphy mutex lock
+   pthread_mutex_t memphy_lock;
 };
 
 #endif

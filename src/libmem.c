@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
-#include "print_debug.h"
 static pthread_mutex_t mmvm_lock = PTHREAD_MUTEX_INITIALIZER;
 /*enlist_vm_freerg_list - add new rg to freerg_list
  *@mm: memory region
@@ -107,6 +106,10 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, addr_t size, addr_t *allo
     {
       pg_getpage(caller->mm, pgn, &dummy_fpn, caller);
     }
+    if (*alloc_addr + size > cur_vma->sbrk)
+    {
+      cur_vma->sbrk = *alloc_addr + size;
+    }
     pthread_mutex_unlock(&mmvm_lock);
     return 0;
   }
@@ -158,6 +161,10 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, addr_t size, addr_t *allo
   for (int pgn = start_pgn_inc; pgn <= end_pgn_inc; pgn++)
   {
     pg_getpage(caller->mm, pgn, &dummy_fpn_inc, caller);
+  }
+  if (old_sbrk + size > cur_vma->sbrk)
+  {
+    cur_vma->sbrk = old_sbrk + size;
   }
   pthread_mutex_unlock(&mmvm_lock);
   return 0;
@@ -289,51 +296,45 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
       addr_t vicfpn;
       addr_t vicpte;
       struct sc_regs regs;
-
-      /* TODO Initialize the target frame storing our variable */
       addr_t tgtfpn;
-      /* TODO: Play with your paging theory here */
-      /* Find victim page */
       if (find_victim_page(caller->mm, &vicpgn) == -1)
       {
         return -1;
       }
       printf("\n--- SWAP OUT TRIGGERED ---\n");
       printf("RAM is full! Evicting Virtual Page Number (PGN): %ld to Swap.\n", (long)vicpgn);
+
+      vicpte = pte_get_entry(caller, vicpgn);
+      vicfpn = PAGING_FPN(vicpte);
+      tgtfpn = vicfpn;
+      if (is_swapped)
+      {
+        MEMPHY_put_freefp(caller->krnl->active_mswp, target_swpfpn);
+      }
       if (MEMPHY_get_freefp(caller->krnl->active_mswp, &swpfpn) == -1)
       {
         return -1;
       }
 
-      /* TODO: Implement swap frame from MEMRAM to MEMSWP and vice versa*/
-
-      /* TODO copy victim frame to swap
-       * SWP(vicfpn <--> swpfpn)
-       * SYSCALL 1 sys_memmap
-       */
-      vicpte = pte_get_entry(caller, vicpgn);
-      vicfpn = PAGING_FPN(vicpte);
+      /* 3. Swap OUT the victim */
       regs.a1 = SYSMEM_SWP_OP;
       regs.a2 = vicfpn;
       regs.a3 = swpfpn;
-      regs.a4 = 0;
+      regs.a4 = 0; // Write to swap
       _syscall(caller->krnl, caller->pid, 17, &regs);
-      tgtfpn = vicfpn;
+
       pte_set_swap(caller, vicpgn, 0, swpfpn);
-      /* Update page table */
-      // pte_set_swap(...);
+
       if (is_swapped)
       {
         regs.a1 = SYSMEM_SWP_OP;
-        regs.a2 = target_swpfpn;
-        regs.a3 = tgtfpn;
-        regs.a4 = 1;
+        regs.a2 = target_swpfpn; // Source: Swap
+        regs.a3 = tgtfpn;        // Dest: RAM
+        regs.a4 = 1;             // Read from swap
         _syscall(caller->krnl, caller->pid, 17, &regs);
-
-        MEMPHY_put_freefp(caller->krnl->active_mswp, target_swpfpn);
       }
-      /* Update its online status of the target page */
-      // pte_set_fpn(...);
+
+      /* Update page table and FIFO */
       pte_set_fpn(caller, pgn, tgtfpn);
       enlist_pgn_node(&caller->mm->fifo_pgn, pgn);
       *fpn = tgtfpn;

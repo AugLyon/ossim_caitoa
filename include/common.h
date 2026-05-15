@@ -3,6 +3,7 @@
 
 /* Define structs and routine could be used by every source files */
 
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -134,6 +135,7 @@ struct krnl_t
 	struct queue_t *running_list;
 #ifdef MLQ_SCHED
 	struct queue_t *mlq_ready_queue;
+	pthread_mutex_t sched_lock;
 #endif
 #ifdef MM_PAGING
 	struct mm_struct *mm;

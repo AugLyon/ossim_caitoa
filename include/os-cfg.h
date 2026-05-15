@@ -11,7 +11,10 @@
 #ifndef OSCFG_H
 #define OSCFG_H
 
+#ifndef MLQ_SCHED
 #define MLQ_SCHED 1
+#endif
+
 #define MAX_PRIO 140
 
 #define MM_PAGING

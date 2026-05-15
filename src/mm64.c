@@ -137,6 +137,7 @@ addr_t *get_or_create_pte(struct mm_struct *mm, addr_t pgd, addr_t p4d, addr_t p
  */
 int pte_set_swap(struct pcb_t *caller, addr_t pgn, int swptyp, addr_t swpoff)
 {
+  pthread_mutex_lock(&caller->mm->mm_lock); // lock 
   struct mm_struct *mm = caller->mm;
 
   addr_t *pte;
@@ -165,7 +166,7 @@ int pte_set_swap(struct pcb_t *caller, addr_t pgn, int swptyp, addr_t swpoff)
 
   SETVAL(*pte, swptyp, PAGING_PTE_SWPTYP_MASK, PAGING_PTE_SWPTYP_LOBIT);
   SETVAL(*pte, swpoff, PAGING_PTE_SWPOFF_MASK, PAGING_PTE_SWPOFF_LOBIT);
-
+  pthread_mutex_unlock(&caller->mm->mm_lock); // unlock
   return 0;
 }
 
@@ -202,8 +203,7 @@ int pte_set_fpn(struct pcb_t *caller, addr_t pgn, addr_t fpn)
   CLRBIT(*pte, PAGING_PTE_SWAPPED_MASK);
 
   SETVAL(*pte, fpn, PAGING_PTE_FPN_MASK, PAGING_PTE_FPN_LOBIT);
-
-  return 0;
+    return 0;
 }
 
 /* Get PTE page table entry
@@ -213,6 +213,7 @@ int pte_set_fpn(struct pcb_t *caller, addr_t pgn, addr_t fpn)
  **/
 addr_t pte_get_entry(struct pcb_t *caller, addr_t pgn)
 {
+  pthread_mutex_lock(&caller->mm->mm_lock); // lock
   struct mm_struct *mm = caller->mm;
   addr_t pte = 0;
   addr_t pgd = 0;
@@ -226,19 +227,28 @@ addr_t pte_get_entry(struct pcb_t *caller, addr_t pgn)
   //... krnl->mm->pgd
   //... krnl->mm->pt
   // pte = &krnl->mm->pt;
-  if (mm->pgd[pgd] == 0)
+  if (mm->pgd[pgd] == 0) {
+    pthread_mutex_unlock(&caller->mm->mm_lock); // unlock
     return 0;
+  }
   addr_t *p4d_table = (addr_t *)mm->pgd[pgd];
-  if (p4d_table[p4d] == 0)
+  if (p4d_table[p4d] == 0) {
+    pthread_mutex_unlock(&caller->mm->mm_lock); // unlock
     return 0;
+  }
   addr_t *pud_table = (addr_t *)p4d_table[p4d];
-  if (pud_table[pud] == 0)
+  if (pud_table[pud] == 0) {
+    pthread_mutex_unlock(&caller->mm->mm_lock); // unlock
     return 0;
+  }
   addr_t *pmd_table = (addr_t *)pud_table[pud];
-  if (pmd_table[pmd] == 0)
+  if (pmd_table[pmd] == 0) {
+    pthread_mutex_unlock(&caller->mm->mm_lock); // unlock
     return 0;
+  }
   addr_t *pt_table = (addr_t *)pmd_table[pmd];
   pte = (addr_t)pt_table[pt];
+  pthread_mutex_unlock(&caller->mm->mm_lock); //unlock
   return pte;
 }
 
@@ -554,6 +564,9 @@ int init_mm(struct mm_struct *mm, struct pcb_t *caller)
   }
   mm->kcpooltbl = calloc(PAGING_MAX_SYMTBL_SZ, sizeof(struct kcache_pool_struct));
   mm->fifo_pgn = NULL;
+
+  // init mm mutex lock
+  pthread_mutex_init(&mm->mm_lock, NULL);
   return 0;
 }
 

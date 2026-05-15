@@ -1,7 +1,7 @@
 
 #include "cpu.h"
 #include "timer.h"
-#include "sched.h"
+#include "scheduler.h"
 #include "loader.h"
 #include "mm.h"
 #ifdef MM64
@@ -16,7 +16,7 @@
 static int time_slot;
 static int num_cpus;
 static int done = 0;
-static struct krnl_t os;
+struct krnl_t os;
 
 #ifdef MM_PAGING
 static unsigned long memramsz;
@@ -305,6 +305,11 @@ int main(int argc, char *argv[])
 
 	/* Init scheduler */
 	init_scheduler();
+
+	// init sched mutex lock
+#ifdef MLQ_SCHED
+	pthread_mutex_init(&os.sched_lock, NULL);
+#endif
 
 	/* Run CPU and loader */
 #ifdef MM_PAGING
