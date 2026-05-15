@@ -8,18 +8,18 @@ INCLUDE = include
 
 CC = gcc
 DEBUG = -g
-CFLAGS = -Wall -c $(DEBUG) -pthread
-LFLAGS = -Wall $(DEBUG) -pthread
+CFLAGS = -Wall -c $(DEBUG)
+LFLAGS = -Wall $(DEBUG)
 
 vpath %.c $(SRC)
 vpath %.h $(INCLUDE)
 
 MAKE = $(CC) $(INC) 
 
-# Object files needed by modules
+# Object files needed by modules -fsanitize=address
 MEM_OBJ = $(addprefix $(OBJ)/, paging.o mem.o cpu.o loader.o)
 SYSCALL_OBJ = $(addprefix $(OBJ)/, syscall.o  sys_mem.o sys_listsyscall.o)
-OS_OBJ = $(addprefix $(OBJ)/, cpu.o mem.o loader.o queue.o os.o sched.o timer.o mm-vm.o mm64.o mm.o mm-memphy.o libstd.o libmem.o)
+OS_OBJ = $(addprefix $(OBJ)/, cpu.o mem.o loader.o queue.o os.o sched.o timer.o mm-vm.o mm64.o mm.o mm-memphy.o libstd.o libmem.o print_debug.o)
 OS_OBJ += $(SYSCALL_OBJ)
 SCHED_OBJ = $(addprefix $(OBJ)/, cpu.o loader.o)
 HEADER = $(wildcard $(INCLUDE)/*.h)
@@ -38,8 +38,8 @@ sched: $(SCHED_OBJ)
 # Compile syscall
 syscalltbl.lst: $(SRC)/syscall.tbl
 	@echo $(OS_OBJ)
-	chmod +x $(SRC)/syscalltbl.sh
-	$(SRC)/syscalltbl.sh $< $(SRC)/$@ 
+	sed -i 's/\r$$//' $(SRC)/syscalltbl.sh
+	bash $(SRC)/syscalltbl.sh $< $(SRC)/$@
 #	mv $(OBJ)/syscalltbl.lst $(INCLUDE)/
 
 # Compile the whole OS simulation

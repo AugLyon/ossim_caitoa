@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <print_debug.h>
 static pthread_mutex_t mmvm_lock = PTHREAD_MUTEX_INITIALIZER;
 /*enlist_vm_freerg_list - add new rg to freerg_list
  *@mm: memory region
@@ -219,6 +220,13 @@ int liballoc(struct pcb_t *proc, addr_t size, uint32_t reg_index)
   proc->regs[reg_index] = addr;
 #ifdef IODUMP
   /* TODO dump IO content (if needed) */
+  printf("\n======================================== KERNEL INFO ========================================\n");
+  printf("[EXEC] ALLOC | args=(%ld,%d,0,0)\n", (long)size, reg_index);
+
+  print_memphy("RAM", proc->krnl->mram);
+  print_memphy("ACTIVE SWAP", proc->krnl->active_mswp);
+
+  print_mm_struct(proc->mm);
 #ifdef PAGETBL_DUMP
   print_pgtbl(proc, 0, -1); // print max TBL
 #endif
@@ -243,6 +251,13 @@ int libfree(struct pcb_t *proc, uint32_t reg_index)
   proc->regs[reg_index] = 0;
 #ifdef IODUMP
   /* TODO dump IO content (if needed) */
+  printf("\n======================================== KERNEL INFO ========================================\n");
+  printf("[EXEC] FREE | args=(%d)\n", reg_index);
+
+  print_memphy("RAM", proc->krnl->mram);
+  print_memphy("ACTIVE SWAP", proc->krnl->active_mswp);
+
+  print_mm_struct(proc->mm);
 #ifdef PAGETBL_DUMP
   print_pgtbl(proc, 0, -1); // print max TBL
 #endif
@@ -463,6 +478,15 @@ int libread(
   printf("VALIDATION: Read value '%d' from offset %ld\n", data, (long)offset);
 #ifdef IODUMP
   /* TODO dump IO content (if needed) */
+  printf("\n======================================== KERNEL INFO ========================================\n");
+  printf("[EXEC] READ | args=(%d,%ld,%d)\n", source, (long)offset, *destination);
+
+  /* 1. Print the Hardware (RAM and Swap) */
+  print_memphy("RAM", proc->krnl->mram);
+  print_memphy("ACTIVE SWAP", proc->krnl->active_mswp);
+
+  /* 2. Print the Process Memory (Page Table, VMAs, Symbol Table, FIFO) */
+  print_mm_struct(proc->mm);
 #ifdef PAGETBL_DUMP
   print_pgtbl(proc, 0, -1); // print max TBL
 #endif
@@ -513,6 +537,15 @@ int libwrite(
   }
 #ifdef IODUMP
   /* TODO dump IO content (if needed) */
+  printf("\n======================================== KERNEL INFO ========================================\n");
+  printf("[EXEC] WRITE | args=(%d,%d,%ld)\n", data, destination, (long)offset);
+
+  /* 1. Print the Hardware (RAM and Swap) */
+  print_memphy("RAM", proc->krnl->mram);
+  print_memphy("ACTIVE SWAP", proc->krnl->active_mswp);
+
+  /* 2. Print the Process Memory (Page Table, VMAs, Symbol Table, FIFO) */
+  print_mm_struct(proc->mm);
 #ifdef PAGETBL_DUMP
   print_pgtbl(proc, 0, -1); // print max TBL
 #endif
