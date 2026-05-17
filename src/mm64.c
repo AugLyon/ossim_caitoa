@@ -96,9 +96,6 @@ int get_pd_from_pagenum(addr_t pgn, addr_t *pgd, addr_t *p4d, addr_t *pud, addr_
   /* Shift the address to get page num and perform the mapping*/
   get_pd_from_address(pgn << PAGING64_ADDR_PT_SHIFT, pgd, p4d, pud, pmd, pt);
 
-  /* THE SMOKING GUN PRINT */
-  printf("DEBUG MATH: PGN %ld calculated as -> PGD:%ld P4D:%ld PUD:%ld PMD:%ld PT:%ld\n",
-         (long)pgn, (long)*pgd, (long)*p4d, (long)*pud, (long)*pmd, (long)*pt);
   return 0;
 }
 

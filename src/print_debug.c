@@ -84,11 +84,22 @@ uint32_t pte_get_entry_print(struct mm_struct *mm, addr_t pgn)
                         &pud_idx,
                         &pmd_idx,
                         &pt_idx);
-
+    if (mm == NULL || mm->pgd == NULL)
+        return 0;
+    if (mm->pgd[pgd_idx] == 0)
+        return 0;
     addr_t *p4d = (addr_t *)mm->pgd[pgd_idx];
+    if (p4d == NULL || p4d[p4d_idx] == 0)
+        return 0;
     addr_t *pud = (addr_t *)p4d[p4d_idx];
+    if (pud == NULL || pud[pud_idx] == 0)
+        return 0;
     addr_t *pmd = (addr_t *)pud[pud_idx];
+    if (pmd == NULL || pmd[pmd_idx] == 0)
+        return 0;
     addr_t *pt = (addr_t *)pmd[pmd_idx];
+    if (pt == NULL || pt[pt_idx] == 0)
+        return 0;
     return (uint32_t)pt[pt_idx];
 }
 

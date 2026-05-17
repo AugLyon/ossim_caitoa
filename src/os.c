@@ -71,12 +71,12 @@ static void *cpu_routine(void *args)
 				continue; /* First load failed. skip dummy load */
 			}
 		}
-		else if (proc->pc == proc->code->size)
+		else if (proc->pc >= proc->code->size)
 		{
 			/* The porcess has finish it job */
 			printf("\tCPU %d: Processed %2d has finished\n",
 				   id, proc->pid);
-			free(proc);
+			//free(proc);
 			proc = get_proc();
 			time_left = 0;
 		}
@@ -134,12 +134,11 @@ static void *ld_routine(void *args)
 	int i = 0;
 	/* TODO init kernel page table directory */
 #ifdef MM64
-	os.krnl_pgd = malloc(PAGING64_MAX_PGN * sizeof(addr_t));
-	os.krnl_pgd = malloc(PAGING64_MAX_PGN * sizeof(addr_t));
-	os.krnl_p4d = malloc(PAGING64_MAX_PGN * sizeof(addr_t));
-	os.krnl_pud = malloc(PAGING64_MAX_PGN * sizeof(addr_t));
-	os.krnl_pmd = malloc(PAGING64_MAX_PGN * sizeof(addr_t));
-	os.krnl_pt = malloc(PAGING64_MAX_PGN * sizeof(addr_t));
+	os.krnl_pgd = calloc(PAGING64_MAX_PGN, sizeof(addr_t));
+	os.krnl_p4d = calloc(PAGING64_MAX_PGN, sizeof(addr_t));
+	os.krnl_pud = calloc(PAGING64_MAX_PGN, sizeof(addr_t));
+	os.krnl_pmd = calloc(PAGING64_MAX_PGN, sizeof(addr_t));
+	os.krnl_pt = calloc(PAGING64_MAX_PGN, sizeof(addr_t));
 
 	for (i = 0; i < PAGING64_MAX_PGN; i++)
 	{
@@ -283,7 +282,8 @@ int main(int argc, char *argv[])
 
 	struct memphy_struct mram;
 	struct memphy_struct mswp[PAGING_MAX_MMSWP];
-
+	memset(&mram, 0, sizeof(struct memphy_struct));
+	memset(mswp, 0, sizeof(struct memphy_struct) * PAGING_MAX_MMSWP);
 	/* Create MEM RAM */
 	init_memphy(&mram, memramsz, rdmflag);
 

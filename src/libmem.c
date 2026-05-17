@@ -150,7 +150,7 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, addr_t size, addr_t *allo
   addr_t actual_inc_size = regs.a3;
   if (actual_inc_size > size)
   {
-    struct vm_rg_struct *leftover_rg = malloc(sizeof(struct vm_rg_struct));
+    struct vm_rg_struct *leftover_rg = calloc(1, sizeof(struct vm_rg_struct));
     leftover_rg->rg_start = old_sbrk + size;
     leftover_rg->rg_end = old_sbrk + actual_inc_size;
     leftover_rg->rg_next = NULL;
@@ -189,7 +189,7 @@ int __free(struct pcb_t *caller, int vmaid, int rgid)
     pthread_mutex_unlock(&mmvm_lock);
     return -1;
   }
-  struct vm_rg_struct *freerg_node = malloc(sizeof(struct vm_rg_struct));
+  struct vm_rg_struct *freerg_node = calloc(1, sizeof(struct vm_rg_struct));
   freerg_node->rg_start = rgnode->rg_start;
   freerg_node->rg_end = rgnode->rg_end;
   freerg_node->rg_next = NULL;
@@ -223,9 +223,6 @@ int liballoc(struct pcb_t *proc, addr_t size, uint32_t reg_index)
   printf("\n======================================== KERNEL INFO ========================================\n");
   printf("[EXEC] ALLOC | args=(%ld,%d,0,0)\n", (long)size, reg_index);
 
-  print_memphy("RAM", proc->krnl->mram);
-  print_memphy("ACTIVE SWAP", proc->krnl->active_mswp);
-
   print_mm_struct(proc->mm);
 #ifdef PAGETBL_DUMP
   print_pgtbl(proc, 0, -1); // print max TBL
@@ -253,10 +250,6 @@ int libfree(struct pcb_t *proc, uint32_t reg_index)
   /* TODO dump IO content (if needed) */
   printf("\n======================================== KERNEL INFO ========================================\n");
   printf("[EXEC] FREE | args=(%d)\n", reg_index);
-
-  print_memphy("RAM", proc->krnl->mram);
-  print_memphy("ACTIVE SWAP", proc->krnl->active_mswp);
-
   print_mm_struct(proc->mm);
 #ifdef PAGETBL_DUMP
   print_pgtbl(proc, 0, -1); // print max TBL
@@ -279,7 +272,6 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
 
   if (!PAGING_PAGE_PRESENT(pte))
   { /* Page is not online, make it actively living */
-    printf("DEBUG: Page not present\n");
     addr_t free_fpn;
     int is_swapped = (pte & PAGING_PTE_SWAPPED_MASK) != 0;
     addr_t target_swpfpn = 0;
@@ -289,7 +281,6 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
     }
     if (MEMPHY_get_freefp(caller->krnl->mram, &free_fpn) == 0)
     {
-      printf("DEBUG: Free Ram available\n");
       if (is_swapped)
       {
         struct sc_regs regs;
@@ -306,7 +297,6 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
     }
     else
     {
-      printf("DEBUG: Find victim pgae\n");
       addr_t vicpgn, swpfpn;
       addr_t vicfpn;
       addr_t vicpte;
@@ -357,7 +347,6 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
   }
   else
   {
-    printf("DEBUG: Page in Ram\n");
     *fpn = PAGING_FPN(pte_get_entry(caller, pgn));
   }
   return 0;
@@ -481,10 +470,6 @@ int libread(
   printf("\n======================================== KERNEL INFO ========================================\n");
   printf("[EXEC] READ | args=(%d,%ld,%d)\n", source, (long)offset, *destination);
 
-  /* 1. Print the Hardware (RAM and Swap) */
-  print_memphy("RAM", proc->krnl->mram);
-  print_memphy("ACTIVE SWAP", proc->krnl->active_mswp);
-
   /* 2. Print the Process Memory (Page Table, VMAs, Symbol Table, FIFO) */
   print_mm_struct(proc->mm);
 #ifdef PAGETBL_DUMP
@@ -541,8 +526,6 @@ int libwrite(
   printf("[EXEC] WRITE | args=(%d,%d,%ld)\n", data, destination, (long)offset);
 
   /* 1. Print the Hardware (RAM and Swap) */
-  print_memphy("RAM", proc->krnl->mram);
-  print_memphy("ACTIVE SWAP", proc->krnl->active_mswp);
 
   /* 2. Print the Process Memory (Page Table, VMAs, Symbol Table, FIFO) */
   print_mm_struct(proc->mm);
@@ -626,7 +609,6 @@ addr_t __kmalloc(struct pcb_t *caller, int vmaid, int rgid, addr_t size, addr_t 
    *       update krnl_pgd for OS kernel level management */
   fflush(stdout);
   pthread_mutex_lock(&mmvm_lock);
-  printf("DEBUG: kmalloc step 2 (mutex locked)\n");
   fflush(stdout);
   struct krnl_t *krnl = caller->krnl;
   addr_t kernel_base = 0xff11000000000000ULL;
@@ -640,7 +622,6 @@ addr_t __kmalloc(struct pcb_t *caller, int vmaid, int rgid, addr_t size, addr_t 
   addr_t start_fpn = -1;
   int consecutive_free_frames = 0;
   int max_frames = krnl->mram->maxsz / page_size;
-  printf("DEBUG: kmalloc find free frame\n");
   fflush(stdout);
   for (int i = 0; i < max_frames; i++)
   {
@@ -661,7 +642,6 @@ addr_t __kmalloc(struct pcb_t *caller, int vmaid, int rgid, addr_t size, addr_t 
 
   if (start_fpn == -1 || consecutive_free_frames < num_pages)
   {
-    printf("DEBUG: kmalloc unsufficient free frame\n");
     fflush(stdout);
     pthread_mutex_unlock(&mmvm_lock);
     return -1;
@@ -669,7 +649,6 @@ addr_t __kmalloc(struct pcb_t *caller, int vmaid, int rgid, addr_t size, addr_t 
   addr_t base_pgn = kernel_base / page_size;
   addr_t start_pgn = -1;
   int consecutive_free_pages = 0;
-  printf("DEBUG: kmalloc find free page\n");
   fflush(stdout);
   for (addr_t i = base_pgn; i < base_pgn + 100000; i++)
   {
@@ -692,7 +671,6 @@ addr_t __kmalloc(struct pcb_t *caller, int vmaid, int rgid, addr_t size, addr_t 
   }
   if (consecutive_free_pages < num_pages || start_pgn == -1)
   {
-    printf("DEBUG: kmalloc unsufficient free page\n");
     fflush(stdout);
     pthread_mutex_unlock(&mmvm_lock);
     return -1;
@@ -713,7 +691,6 @@ addr_t __kmalloc(struct pcb_t *caller, int vmaid, int rgid, addr_t size, addr_t 
     krnl->mm->symrgtbl[rgid].rg_start = start_addr;
     krnl->mm->symrgtbl[rgid].rg_end = start_addr + size;
   }
-  printf("DEBUG: kmalloc step 3 (logic complete, unlocking)\n");
   fflush(stdout);
   pthread_mutex_unlock(&mmvm_lock);
   return 0;
@@ -734,7 +711,6 @@ addr_t internal__kmalloc(struct pcb_t *caller, int vmaid, int rgid, addr_t size,
   addr_t start_fpn = -1;
   int consecutive_free_frames = 0;
   int max_frames = krnl->mram->maxsz / page_size;
-  printf("DEBUG: kmalloc find free frame\n");
   fflush(stdout);
   for (int i = 0; i < max_frames; i++)
   {
@@ -821,7 +797,6 @@ int libkmem_cache_pool_create(struct pcb_t *caller, uint32_t size, uint32_t alig
     return -1;
   }
   pthread_mutex_lock(&mmvm_lock);
-  printf("DEBUG: kmem_cache_create START (locking)\n");
   fflush(stdout);
   struct krnl_t *krnl = caller->krnl;
   addr_t pool_base_addr;

@@ -70,12 +70,12 @@ int MEMPHY_read(struct memphy_struct *mp, addr_t addr, BYTE *value)
 {
    if (mp == NULL || addr >= mp->maxsz) // ADD: || addr >= mp->maxsz
       return -1;
-   pthread_mutex_lock(&mp->memphy_lock);  // lock device
+   pthread_mutex_lock(&mp->memphy_lock); // lock device
    if (mp->rdmflg)
       *value = mp->storage[addr];
    else /* Sequential access device */
       MEMPHY_seq_read(mp, addr, value);
-   pthread_mutex_unlock(&mp->memphy_lock);   // unlock device
+   pthread_mutex_unlock(&mp->memphy_lock); // unlock device
    return 0;
 }
 
@@ -113,7 +113,8 @@ int MEMPHY_write(struct memphy_struct *mp, addr_t addr, BYTE data)
       return -1;
    }
    pthread_mutex_lock(&mp->memphy_lock);
-   if (mp->rdmflg){
+   if (mp->rdmflg)
+   {
       mp->storage[addr] = data;
    }
    else /* Sequential access device */
@@ -139,7 +140,7 @@ int MEMPHY_format(struct memphy_struct *mp, int pagesz)
       return -1;
 
    /* Init head of free framephy list */
-   fst = malloc(sizeof(struct framephy_struct));
+   fst = calloc(1, sizeof(struct framephy_struct));
    fst->fpn = iter;
    fst->owner = NULL; // ADD: fst->owner = NULL;
    mp->free_fp_list = fst;
@@ -161,11 +162,12 @@ int MEMPHY_format(struct memphy_struct *mp, int pagesz)
 int MEMPHY_get_freefp(struct memphy_struct *mp, addr_t *retfpn)
 {
    if (mp == NULL)
-      return -1; // ADD: if(mp == NULL) return -1;
-   pthread_mutex_lock(&mp->memphy_lock);  // lock access
+      return -1;                         // ADD: if(mp == NULL) return -1;
+   pthread_mutex_lock(&mp->memphy_lock); // lock access
    struct framephy_struct *fp = mp->free_fp_list;
 
-   if (fp == NULL) {
+   if (fp == NULL)
+   {
       pthread_mutex_unlock(&mp->memphy_lock); // unlock access
       return -1;
    }
@@ -176,9 +178,9 @@ int MEMPHY_get_freefp(struct memphy_struct *mp, addr_t *retfpn)
    /* MEMPHY is iteratively used up until its exhausted
     * No garbage collector acting then it not been released
     */
-   fp->fp_next = mp->used_fp_list; // FIX: free framephy -> move to used_fp
-   mp->used_fp_list = fp;          // initial state: free(fp);
-   pthread_mutex_unlock(&mp->memphy_lock);   // unlock access
+   fp->fp_next = mp->used_fp_list;         // FIX: free framephy -> move to used_fp
+   mp->used_fp_list = fp;                  // initial state: free(fp);
+   pthread_mutex_unlock(&mp->memphy_lock); // unlock access
 
    return 0;
 }
@@ -209,8 +211,8 @@ int MEMPHY_dump(struct memphy_struct *mp)
 int MEMPHY_put_freefp(struct memphy_struct *mp, addr_t fpn)
 {
    if (mp == NULL)
-      return -1; // ADD: if(mp == NULL) return -1;
-   pthread_mutex_lock(&mp->memphy_lock);  // lock access
+      return -1;                         // ADD: if(mp == NULL) return -1;
+   pthread_mutex_lock(&mp->memphy_lock); // lock access
    struct framephy_struct *fp = mp->free_fp_list;
    /*   struct framephy_struct *newnode = malloc(sizeof(struct framephy_struct));
 
@@ -227,7 +229,7 @@ int MEMPHY_put_freefp(struct memphy_struct *mp, addr_t fpn)
       used_fp->fp_next = mp->free_fp_list;
       used_fp->owner = NULL;
       mp->free_fp_list = used_fp;
-      pthread_mutex_unlock(&mp->memphy_lock);   // unlock access
+      pthread_mutex_unlock(&mp->memphy_lock); // unlock access
       return 0;
    }
    while (used_fp != NULL)
@@ -239,12 +241,12 @@ int MEMPHY_put_freefp(struct memphy_struct *mp, addr_t fpn)
          temp->fp_next = mp->free_fp_list;
          temp->owner = NULL;
          mp->free_fp_list = temp;
-         pthread_mutex_unlock(&mp->memphy_lock);   // unlock access
+         pthread_mutex_unlock(&mp->memphy_lock); // unlock access
          return 0;
       }
       used_fp = used_fp->fp_next;
    }
-   pthread_mutex_unlock(&mp->memphy_lock);   // unlock access
+   pthread_mutex_unlock(&mp->memphy_lock); // unlock access
    return -1;
 }
 
@@ -253,7 +255,7 @@ int MEMPHY_put_freefp(struct memphy_struct *mp, addr_t fpn)
  */
 int init_memphy(struct memphy_struct *mp, addr_t max_size, int randomflg)
 {
-   mp->storage = (BYTE *)malloc(max_size * sizeof(BYTE));
+   mp->storage = (BYTE *)calloc(max_size, sizeof(BYTE));
    mp->maxsz = max_size;
    memset(mp->storage, 0, max_size * sizeof(BYTE));
 
@@ -261,7 +263,7 @@ int init_memphy(struct memphy_struct *mp, addr_t max_size, int randomflg)
 
    mp->used_fp_list = NULL; // ADD: mp->used_fp_list = NULL;
    mp->rdmflg = (randomflg != 0) ? 1 : 0;
-   
+
    if (!mp->rdmflg) /* Not Ramdom acess device, then it serial device*/
       mp->cursor = 0;
 
