@@ -1,4 +1,4 @@
-
+#include <unistd.h>
 #include "cpu.h"
 #include "timer.h"
 #include "scheduler.h"
@@ -153,6 +153,7 @@ static void *ld_routine(void *args)
 		;
 #endif
 	i = 0;
+	int currentTimer = 0;
 	printf("ld_routine\n");
 	while (i < num_processes)
 	{
@@ -165,6 +166,8 @@ static void *ld_routine(void *args)
 		while (current_time() < ld_processes.start_time[i])
 		{
 			next_slot(timer_id);
+			currentTimer++;
+			usleep(1000);
 		}
 #ifdef MM_PAGING
 		proc->mm = (struct mm_struct *)malloc(sizeof(struct mm_struct));
@@ -181,7 +184,6 @@ static void *ld_routine(void *args)
 		add_proc(proc);
 		free(ld_processes.path[i]);
 		i++;
-		next_slot(timer_id);
 	}
 	free(ld_processes.path);
 	free(ld_processes.start_time);

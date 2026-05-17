@@ -28,17 +28,22 @@ static int slot[MAX_PRIO];
 
 int queue_empty(void)
 {
+	int is_empty = 1;
+	pthread_mutex_lock(&os.sched_lock);
 #ifdef MLQ_SCHED
 	unsigned long prio;
-	for (prio = 0; prio < MAX_PRIO; prio++)
+	for (prio = 0; prio < MAX_PRIO; prio++) {
 		if (!empty(&mlq_ready_queue[prio])) {
-			pthread_mutex_unlock(&os.sched_lock);
-			return 0;
+			is_empty = 0;
+			break;
 		}
+	}
 #endif
-	int isEmpty = (empty(&ready_queue) && empty(&run_queue));
+	if (is_empty) {
+		is_empty = (empty(&ready_queue) && empty(&run_queue));
+	}
 	pthread_mutex_unlock(&os.sched_lock);
-	return isEmpty;
+	return is_empty;
 }
 
 void init_scheduler(void)
